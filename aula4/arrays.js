@@ -12,7 +12,7 @@ function adicionar() {
   console.log(cliente);
   clientes.push(cliente);
   console.log(clientes);
-  listar();
+  listar(); // chama a função listar para atualizar a lista de clientes;
   
 
 }
