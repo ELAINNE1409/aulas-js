@@ -60,3 +60,18 @@ function apelido() {
 
   document.getElementById("listaP").innerHTML = text;
 }
+
+function firstLetter() {
+  
+  let letter = document.getElementById("firstletter").value; 
+  let text = "<ul>";
+    for (let i = 0; i < clientes.length; i++) {
+        if (clientes[i].nome.substring(0,1).toUpperCase() == letter.toUpperCase()){ //a substring pega a primeira letra do nome, sendo o 0 é o index e a segunda é até onde vai pegar.
+        text += "<li>" + clientes[i].nome +" "+ clientes[i].sobrenome + "</li>" // toUpperCase() deixa a letra maiúscula;
+        }
+    }
+
+    text += "</ul>";
+
+  document.getElementById("listaP").innerHTML = text;
+}
