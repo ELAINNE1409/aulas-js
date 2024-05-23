@@ -9,9 +9,9 @@ Criar a conexao com a base de dados
 */
 const pool = mysql.createPool({
     host: 'localhost',
-    user: 'root',
-    password: 'password',
-    database: 'techgirls',
+    user: 'tonysoprano',
+    password: '12345678',
+    database: 'data_dev',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -54,34 +54,20 @@ app.get('/clientes', async(req, res) => {
 });
 
 app.get('/contas_clientes', async(req, res) => {
-    const {id_cliente} = req.body;
-    const contasC = [];
-    let nomeCliente = "";
-    if(id_cliente){
-        for(let i = 0; i < clientes.length; i++){
-            if(clientes[i].id === id_cliente){
-                nomeCliente = clientes[i].nome;
-                for(let j = 0; j < contas.length; j++){
-                    if(contas[j].id_cliente === id_cliente){
-                        contasC.push(contas[j]);
-                    }
-                }
-                break;
-            }
-        }
+    try {
+        const connection = await pool.getConnection();
+        const [rows, fields] = await connection.execute('select cli.nome, co.id, co.saldo from cliente cli inner join CONTA co on cli.id = co.CLIENTE_iD');
+        connection.release();
+        res.json(rows); // Retorna os resultados da consulta como JSON
+    } catch (error) {
+        console.error('Erro ao obter clientes:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' }); // Retorna um status 500 em caso de erro
     }
-
-    const clienteContas = {
-        id_cliente: id_cliente,
-        nome_cliente : nomeCliente,
-        contasC
-    }
-    res.json(clienteContas)
 });
 
 app.post('/cliente', async(req, res) => {
     console.log(req.body);
-    const {nome, morada} = req.body;
+    const {nome, morada} = req.body; // informações para colocar no postman no body
     try {
         if(nome !== null && morada !== null){
             const connection = await pool.getConnection();
@@ -100,29 +86,43 @@ app.post('/cliente', async(req, res) => {
 
 app.post('/conta', async(req, res) => {
     console.log(req.body);
-    const {id_cliente, id, saldo} = req.body;
-    let adicionado = false;
-
-    if(id_cliente !== null && id !== null && saldo !== null){
-        for(let i = 0; i < clientes.length; i++){
-            if(clientes[i].id === id_cliente){
-                const conta = {id : id, id_cliente : id_cliente, saldo : saldo};
-                console.log(conta);
-                contas.push(conta);
-                adicionado = true;
-                break;
-            }
+    const {id_cliente, saldo} = req.body;
+    try {
+        if(id_cliente !== null && saldo !== null){
+            const connection = await pool.getConnection();
+            await connection.execute('INSERT INTO CONTA (cliente_id, saldo) VALUES (?, ?)', [id_cliente, saldo]);
+            connection.release();    
+            res.json({sucess: true, message: 'conta registado'});        
         }
-    }
-    if(adicionado){
-        res.json({sucess: true, message: 'conta registada'});
-    }else{
-        res.json({sucess: false, message: 'Este cliente não existe.'});
+    } catch (error) {
+        console.error('Erro ao registar conta', error);
+        res.status(500).json({sucess: false, message: 'Erro ao registar conta'});
     }
 });
 
 app.get('/contas', async(req, res) => {
-    res.json(contas);
+    try {
+        const connection = await pool.getConnection();
+        const [rows, fields] = await connection.execute('SELECT * FROM CONTA');
+        connection.release();
+        res.json(rows); // Retorna os resultados da consulta como JSON
+    } catch (error) {
+        console.error('Erro ao obter contas:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' }); // Retorna um status 500 em caso de erro
+    }
+});
+
+app.put('/conta', async(req, res) => {
+    try {
+        const {saldo, id} = req.body;
+        const connection = await pool.getConnection();
+        const [result] = await connection.execute('UPDATE CONTA SET saldo = ? WHERE id = ?', [saldo, id]);
+        connection.release();
+        res.status(200).json({ message: 'Conta atualizado com sucesso' });
+    } catch (error) {
+        console.error('Erro ao atualizar conta:', error);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+    }
 });
 
 app.listen(PORT, () => {
