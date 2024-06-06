@@ -115,15 +115,75 @@ app.get('/contas', async(req, res) => {
 app.put('/conta', async(req, res) => {
     try {
         const {saldo, id} = req.body;
-        const connection = await pool.getConnection();
-        const [result] = await connection.execute('UPDATE CONTA SET saldo = ? WHERE id = ?', [saldo, id]);
-        connection.release();
+        const connection = await pool.getConnection(); // Obtem uma conexão do pool com a base de dados 
+        atualizarConta(id, saldo, connection);
         res.status(200).json({ message: 'Conta atualizado com sucesso' });
     } catch (error) {
         console.error('Erro ao atualizar conta:', error);
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
 });
+
+app.put('/debito', async(req, res) => {
+    console.log(req.body);
+    const {id_conta, valor} = req.body;
+    const connection = await pool.getConnection();
+    const [rows, fields] = await connection.execute('SELECT saldo FROM CONTA WHERE id = ?', [id_conta]);
+    connection.release();
+    const saldo = rows[0].saldo;
+    if(saldo < valor){
+        res.json({sucess: false, message: 'Saldo insuficiente'});
+
+    } else {
+        const novoSaldo = saldo - valor;
+        console.log(novoSaldo);
+        atualizarConta(id_conta, novoSaldo, connection);                    
+        res.json({sucess: true, message: 'Debito efetuado com sucesso'});
+    }
+   
+});
+
+app.put('/credito', async(req, res) => {
+    console.log(req.body);
+    const {id_conta, valor} = req.body;
+    const connection = await pool.getConnection();
+    const [rows, fields] = await connection.execute('SELECT saldo FROM CONTA WHERE id = ?', [id_conta]);
+    connection.release();
+    const saldo = rows[0].saldo;
+    const novoSaldo = Number(saldo) + valor;
+    console.log(saldo);
+    console.log(novoSaldo);
+    atualizarConta(id_conta, novoSaldo, connection);
+    res.json({sucess: true, message: 'Credito efetuado com sucesso'});
+});
+async function atualizarConta(id, saldo, connection){
+    await connection.execute('UPDATE CONTA SET saldo = ? WHERE id = ?', ([saldo, id]));
+    connection.release();
+    
+}
+app.put('/transferencia', async(req, res) => {
+    console.log(req.body);
+    const {id_conta_origem, id_conta_destino, valor} = req.body;
+    const connection = await pool.getConnection();
+    const [rows, fields] = await connection.execute('SELECT saldo FROM CONTA WHERE id = ?', [id_conta_origem]);
+    connection.release();
+    const saldoContaDebito = rows[0].saldo;
+    if(saldoContaDebito < valor){
+        res.json({sucess: false, message: 'Saldo insuficiente'});
+
+    } else {
+        const novoSaldoOrigem = saldoContaDebito - valor;
+        console.log(novoSaldoOrigem);
+        atualizarConta(id_conta_origem, novoSaldoOrigem, connection);
+        const [rows, fields] = await connection.execute('SELECT saldo FROM CONTA WHERE id = ?', [id_conta_destino]);
+        connection.release();
+        const saldo = rows[0].saldo;
+        const novoSaldoDestino = Number(saldo) + valor;
+        console.log(novoSaldoDestino);
+        atualizarConta(id_conta_destino, novoSaldoDestino, connection);
+        res.json({sucess: true, message: 'Transferencia efetuada com sucesso'});
+    }
+});  
 
 app.listen(PORT, () => {
     console.log(`A executar na porta http://localhost:${PORT}`)
